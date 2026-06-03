@@ -61,21 +61,7 @@ jobs:
             echo "（既存の web/faq.json をそのまま使用）"
           fi
 
-      # 5. 変換したJSONをリポジトリにコミット（差分がある場合のみ）
-      - name: faq.json の変更をコミット
-        run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add web/faq.json
-          if git diff --staged --quiet; then
-            echo "変更なし: コミットをスキップします"
-          else
-            git commit -m "chore: faq.json を自動更新 [skip ci]"
-            git pull --rebase origin main
-            git push
-          fi
-
-      # 6. GitHub Pages 用にアーティファクトをアップロード
+      # 5. GitHub Pages 用にアーティファクトをアップロード
       - name: Pages アーティファクトをアップロード
         uses: actions/upload-pages-artifact@v3
         with:
