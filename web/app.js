@@ -1,31 +1,17 @@
-/**
- * app.js - 社内FAQ検索・表示システム
- *
- * 機能:
- *   - faq.json を読み込み、FAQを一覧表示
- *   - キーワード検索（質問・回答・カテゴリをリアルタイム検索）
- *   - カテゴリフィルター
- *   - アコーディオン形式で回答を開閉
- */
-
 "use strict";
 
-// ----- 状態管理 -----
-let allFaqs = [];         // 全FAQデータ
-let activeCategory = "すべて"; // 現在選択中のカテゴリ
-let searchQuery = "";     // 現在の検索ワード
+let allFaqs = [];
+let activeCategory = "すべて";
+let searchQuery = "";
 
-// ----- 初期化 -----
 document.addEventListener("DOMContentLoaded", () => {
   loadFaqData();
 
-  // 検索ボックスの入力イベント
   document.getElementById("search-input").addEventListener("input", (e) => {
     searchQuery = e.target.value.trim();
     renderFaqs();
   });
 
-  // 検索クリアボタン
   document.getElementById("clear-btn").addEventListener("click", () => {
     document.getElementById("search-input").value = "";
     searchQuery = "";
@@ -33,51 +19,38 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
-// ----- JSONデータの読み込み -----
 async function loadFaqData() {
   try {
-    // faq.json を fetch で読み込む（GitHub Pages でも動作）
-    const response = await fetch("./faq.json");
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-    const data = await response.json();
+    const res = await fetch("./faq.json");
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
     allFaqs = data.faqs || [];
 
-    // 最終更新日を表示
-    const updatedEl = document.getElementById("last-updated");
-    if (updatedEl && data.updated_at) {
-      updatedEl.textContent = `最終更新: ${data.updated_at}`;
-    }
+    const el = document.getElementById("last-updated");
+    if (el && data.updated_at) el.textContent = data.updated_at + " 更新";
 
-    // カテゴリフィルターを生成
     buildCategoryFilter();
-
-    // FAQ一覧を表示
     renderFaqs();
-
   } catch (err) {
-    console.error("FAQ データの読み込みに失敗しました:", err);
     document.getElementById("faq-list").innerHTML =
-      '<p class="error-message">データの読み込みに失敗しました。<br>faq.json が正しく配置されているか確認してください。</p>';
+      '<p class="no-result">データを読み込めませんでした。<br>しばらく待ってから再度お試しください。</p>';
   }
 }
 
-// ----- カテゴリフィルターを生成 -----
 function buildCategoryFilter() {
-  // カテゴリの重複なし一覧を取得
-  const categories = ["すべて", ...new Set(allFaqs.map((f) => f.category))];
-
+  const categories = ["すべて", ...new Set(allFaqs.map(f => f.category))];
   const container = document.getElementById("category-filters");
   container.innerHTML = "";
 
-  categories.forEach((cat) => {
+  categories.forEach(cat => {
     const btn = document.createElement("button");
     btn.className = "category-btn" + (cat === activeCategory ? " active" : "");
-    btn.textContent = cat;
 
-    // カテゴリ件数バッジを付与（「すべて」以外）
+    const label = document.createTextNode(cat);
+    btn.appendChild(label);
+
     if (cat !== "すべて") {
-      const count = allFaqs.filter((f) => f.category === cat).length;
+      const count = allFaqs.filter(f => f.category === cat).length;
       const badge = document.createElement("span");
       badge.className = "badge";
       badge.textContent = count;
@@ -86,8 +59,7 @@ function buildCategoryFilter() {
 
     btn.addEventListener("click", () => {
       activeCategory = cat;
-      // ボタンのactiveクラスを切り替え
-      document.querySelectorAll(".category-btn").forEach((b) => b.classList.remove("active"));
+      document.querySelectorAll(".category-btn").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
       renderFaqs();
     });
@@ -96,127 +68,104 @@ function buildCategoryFilter() {
   });
 }
 
-// ----- FAQを絞り込んで表示 -----
 function renderFaqs() {
   const query = searchQuery.toLowerCase();
 
-  const filtered = allFaqs.filter((faq) => {
-    // カテゴリフィルター
-    const matchCategory =
-      activeCategory === "すべて" || faq.category === activeCategory;
-
-    // キーワード検索（質問・回答・カテゴリを対象）
-    // 回答のHTMLタグを除いてテキストだけで検索
-    const plainAnswer = faq.answer.replace(/<br\s*\/?>/gi, " ");
-    const matchSearch =
+  const filtered = allFaqs.filter(faq => {
+    const matchCat = activeCategory === "すべて" || faq.category === activeCategory;
+    const plain = faq.answer.replace(/<br\s*\/?>/gi, " ");
+    const matchQ =
       query === "" ||
       faq.question.toLowerCase().includes(query) ||
-      plainAnswer.toLowerCase().includes(query) ||
+      plain.toLowerCase().includes(query) ||
       faq.category.toLowerCase().includes(query);
-
-    return matchCategory && matchSearch;
+    return matchCat && matchQ;
   });
 
-  // 件数表示を更新
   const countEl = document.getElementById("result-count");
   if (countEl) {
-    countEl.textContent =
-      query || activeCategory !== "すべて"
-        ? `${filtered.length} 件が一致しました`
-        : `全 ${allFaqs.length} 件`;
+    if (query || activeCategory !== "すべて") {
+      countEl.textContent = `「${query || activeCategory}」の検索結果：${filtered.length} 件`;
+    } else {
+      countEl.textContent = `全 ${allFaqs.length} 件のFAQがあります`;
+    }
   }
 
-  // FAQカードを描画
   const list = document.getElementById("faq-list");
   if (filtered.length === 0) {
-    list.innerHTML = '<p class="no-result">該当するFAQが見つかりませんでした。<br>別のキーワードで検索してみてください。</p>';
+    list.innerHTML = '<p class="no-result">該当するFAQが見つかりませんでした。<br>別のキーワードでお試しください。</p>';
     return;
   }
 
-  list.innerHTML = filtered
-    .map((faq) => buildFaqCard(faq, query))
-    .join("");
+  list.innerHTML = filtered.map(faq => buildFaqCard(faq, query)).join("");
 
-  // アコーディオンのクリックイベントを登録
-  list.querySelectorAll(".faq-question").forEach((el) => {
+  list.querySelectorAll(".faq-question").forEach(el => {
     el.addEventListener("click", () => toggleAccordion(el));
+    el.addEventListener("keydown", e => {
+      if (e.key === "Enter" || e.key === " ") toggleAccordion(el);
+    });
   });
 }
 
-// ----- FAQカードのHTMLを生成 -----
 function buildFaqCard(faq, query) {
   const highlightedQ = highlight(faq.question, query);
-  // 回答はHTMLタグ（<br>）を含むのでハイライトはタグ外のテキストに適用
   const highlightedA = highlightAnswer(faq.answer, query);
 
   return `
     <div class="faq-card" data-id="${faq.id}">
-      <div class="faq-question" role="button" aria-expanded="false" tabindex="0">
-        <span class="category-tag">${escapeHtml(faq.category)}</span>
-        <span class="question-text">Q. ${highlightedQ}</span>
-        <span class="accordion-icon" aria-hidden="true">▼</span>
-      </div>
-      <div class="faq-answer" aria-hidden="true">
-        <div class="answer-content">
-          <span class="answer-label">A.</span>
-          <div class="answer-text">${highlightedA}</div>
+      <div class="faq-question" role="button" tabindex="0" aria-expanded="false">
+        <div class="q-bubble">
+          <span class="category-tag">${escapeHtml(faq.category)}</span>
+          <span class="q-text">Q. ${highlightedQ}</span>
+          <span class="accordion-icon">▼</span>
         </div>
       </div>
-    </div>
-  `;
+      <div class="faq-answer" aria-hidden="true">
+        <div class="answer-row">
+          <div class="bubble-avatar">
+            <svg viewBox="0 0 28 28" fill="none">
+              <rect width="28" height="28" rx="14" fill="#1a4fa0"/>
+              <rect x="7.5" y="9.5" width="13" height="9.5" rx="2.5" fill="white"/>
+              <rect x="10.5" y="12.5" width="2" height="2" rx="1" fill="#1a4fa0"/>
+              <rect x="15.5" y="12.5" width="2" height="2" rx="1" fill="#1a4fa0"/>
+              <rect x="12" y="15.5" width="4" height="1" rx="0.5" fill="#1a4fa0"/>
+              <rect x="12" y="6.5" width="4" height="3" rx="1" fill="white"/>
+              <circle cx="14" cy="6" r="1" fill="#7eb3ff"/>
+            </svg>
+          </div>
+          <div class="a-bubble">${highlightedA}</div>
+        </div>
+      </div>
+    </div>`;
 }
 
-// ----- アコーディオン開閉 -----
 function toggleAccordion(questionEl) {
   const card = questionEl.closest(".faq-card");
-  const answer = card.querySelector(".faq-answer");
   const isOpen = card.classList.contains("open");
-
-  // 他のカードを閉じる（1つだけ開く場合はコメントを外してください）
-  // document.querySelectorAll(".faq-card.open").forEach(c => {
-  //   c.classList.remove("open");
-  //   c.querySelector(".faq-question").setAttribute("aria-expanded", "false");
-  //   c.querySelector(".faq-answer").setAttribute("aria-hidden", "true");
-  // });
-
   if (isOpen) {
     card.classList.remove("open");
     questionEl.setAttribute("aria-expanded", "false");
-    answer.setAttribute("aria-hidden", "true");
+    card.querySelector(".faq-answer").setAttribute("aria-hidden", "true");
   } else {
     card.classList.add("open");
     questionEl.setAttribute("aria-expanded", "true");
-    answer.setAttribute("aria-hidden", "false");
+    card.querySelector(".faq-answer").setAttribute("aria-hidden", "false");
   }
 }
 
-// ----- ユーティリティ: キーワードをハイライト -----
 function highlight(text, query) {
   if (!query) return escapeHtml(text);
   const escaped = escapeHtml(text);
-  const escapedQuery = escapeHtml(query).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return escaped.replace(
-    new RegExp(`(${escapedQuery})`, "gi"),
-    '<mark>$1</mark>'
-  );
+  const safe = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return escaped.replace(new RegExp(`(${escapeHtml(safe)})`, "gi"), "<mark>$1</mark>");
 }
 
-// 回答（<br>タグを含む）内でハイライトを適用
-function highlightAnswer(answerHtml, query) {
-  if (!query) return answerHtml;
-  // テキスト部分のみハイライト（タグ内はスキップ）
-  const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return answerHtml.replace(
-    new RegExp(`(?![^<]*>)(${escapedQuery})`, "gi"),
-    '<mark>$1</mark>'
-  );
+function highlightAnswer(html, query) {
+  if (!query) return html;
+  const safe = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return html.replace(new RegExp(`(?![^<]*>)(${safe})`, "gi"), "<mark>$1</mark>");
 }
 
-// ----- ユーティリティ: HTMLエスケープ -----
-function escapeHtml(text) {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+function escapeHtml(t) {
+  return t.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }
