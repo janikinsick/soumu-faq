@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p /Users/user/soumu-FAQ/.github/workflows /Users/user/soumu-FAQ/data /Users/user/soumu-FAQ/web)",
+      "Bash(python3 -c \"import openpyxl; print\\('openpyxl OK'\\)\")",
+      "Bash(pip3 install *)",
+      "Bash(python3 create_sample_excel.py)",
+      "Bash(python3 convert.py)",
+      "Bash(python3 -m http.server 8765)",
+      "Bash(curl -s http://localhost:8765/faq.json)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(f'FAQデータ: {d[\\\\\"total\\\\\"]}件, 最終更新: {d[\\\\\"updated_at\\\\\"]}'\\)\")",
+      "Bash(python3 -m http.server 8766)",
+      "Bash(curl -s http://localhost:8766/)"
+    ],
+    "additionalDirectories": [
+      "/Users/user/soumu-FAQ/.github"
+    ]
+  }
+}

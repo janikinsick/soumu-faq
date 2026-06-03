@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>総務部 社内FAQシステム</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ===== ヘッダー ===== -->
+  <header>
+    <div class="header-inner">
+      <h1>総務部 よくある質問（FAQ）</h1>
+      <p class="subtitle">勤怠・経費・備品・福利厚生などに関するQ&Aをまとめています</p>
+    </div>
+  </header>
+
+  <!-- ===== メインコンテンツ ===== -->
+  <main>
+
+    <!-- 検索ボックス -->
+    <div class="search-wrapper">
+      <label class="search-label" for="search-input">キーワードで検索</label>
+      <div class="search-box">
+        <input
+          type="search"
+          id="search-input"
+          placeholder="例：有給、交通費、備品..."
+          autocomplete="off"
+          spellcheck="false"
+        >
+        <button id="clear-btn" type="button">クリア</button>
+      </div>
+    </div>
+
+    <!-- カテゴリフィルター -->
+    <div class="filter-section">
+      <p class="filter-label">カテゴリで絞り込む</p>
+      <!-- ここにカテゴリボタンが動的に生成されます -->
+      <div id="category-filters"></div>
+    </div>
+
+    <!-- 件数・更新日 -->
+    <div class="meta-bar">
+      <span id="result-count"></span>
+      <span id="last-updated"></span>
+    </div>
+
+    <!-- FAQリスト（app.js が動的に生成） -->
+    <div id="faq-list" role="list">
+      <p class="no-result">データを読み込んでいます...</p>
+    </div>
+
+  </main>
+
+  <!-- ===== フッター ===== -->
+  <footer>
+    <p>お探しの回答が見つからない場合は、総務部までお問い合わせください</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

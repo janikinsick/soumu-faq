@@ -1,0 +1,94 @@
+# =====================================================
+# deploy.yml - Excel更新時に自動でサイトを更新するCI/CDワークフロー
+# =====================================================
+#
+# 【動作の流れ】
+#   1. GitHubに data/faq_data.xlsx をプッシュ（またはweb/を変更）
+#   2. このワークフローが自動実行される
+#   3. Python で convert.py を実行 → web/faq.json を生成
+#   4. web/ フォルダの内容を GitHub Pages に自動デプロイ
+#
+# 【GitHub Pages の有効化（初回のみ）】
+#   GitHubリポジトリ → Settings → Pages
+#   → Source: "GitHub Actions" を選択して保存
+#
+# =====================================================
+
+name: ExcelをJSONに変換してサイトをデプロイ
+
+on:
+  push:
+    branches:
+      - main          # mainブランチへのプッシュで起動
+    paths:
+      - "data/**"     # data/フォルダの変更（Excel更新）
+      - "web/**"      # web/フォルダの変更（サイト編集）
+      - "convert.py"  # 変換スクリプトの変更
+  workflow_dispatch:  # 手動実行ボタンを有効化
+
+permissions:
+  contents: write     # ファイルのコミットに必要
+  pages: write        # GitHub Pages への書き込みに必要
+  id-token: write     # GitHub Pages 認証に必要
+
+jobs:
+  convert-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. リポジトリをチェックアウト
+      - name: リポジトリを取得
+        uses: actions/checkout@v4
+
+      # 2. Python をセットアップ
+      - name: Python 3.11 をセットアップ
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # 3. 依存ライブラリをインストール
+      - name: 依存ライブラリのインストール (openpyxl)
+        run: pip install openpyxl
+
+      # 4. Excel → JSON 変換を実行
+      - name: Excel を JSON に変換
+        run: |
+          if [ -f "data/faq_data.xlsx" ]; then
+            python convert.py
+            echo "変換完了: web/faq.json を更新しました"
+          else
+            echo "data/faq_data.xlsx が存在しないため、変換をスキップします"
+            echo "（既存の web/faq.json をそのまま使用）"
+          fi
+
+      # 5. 変換したJSONをリポジトリにコミット（差分がある場合のみ）
+      - name: faq.json の変更をコミット
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add web/faq.json
+          if git diff --staged --quiet; then
+            echo "変更なし: コミットをスキップします"
+          else
+            git commit -m "chore: faq.json を自動更新 [skip ci]"
+            git push
+          fi
+
+      # 6. GitHub Pages 用にアーティファクトをアップロード
+      - name: Pages アーティファクトをアップロード
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/   # web/フォルダ全体を公開
+
+      # 7. GitHub Pages にデプロイ
+      - name: GitHub Pages にデプロイ
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      # 8. デプロイ完了の通知
+      - name: デプロイ完了
+        run: |
+          echo "=========================================="
+          echo "  デプロイ完了！"
+          echo "  URL: ${{ steps.deployment.outputs.page_url }}"
+          echo "=========================================="
