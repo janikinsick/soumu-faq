@@ -71,6 +71,7 @@ jobs:
             echo "変更なし: コミットをスキップします"
           else
             git commit -m "chore: faq.json を自動更新 [skip ci]"
+            git pull --rebase origin main
             git push
           fi
 
