@@ -1,80 +1,130 @@
 "use strict";
 
-let allFaqs = [];
+// ===== 状態 =====
+let allFaqs        = [];
 let activeCategory = "すべて";
-let searchQuery = "";
+let searchQuery    = "";
 
+// チャット履歴 [{ role:'bot'|'user', content:string }]
+const chatHistory  = [];
+
+// ===== 起動 =====
 document.addEventListener("DOMContentLoaded", () => {
   loadFaqData();
 
-  document.getElementById("search-input").addEventListener("input", (e) => {
-    searchQuery = e.target.value.trim();
-    renderFaqs();
+  const input  = document.getElementById("search-input");
+  const sendBtn = document.getElementById("send-btn");
+
+  // 入力でリアルタイムフィルタリング
+  input.addEventListener("input", () => {
+    searchQuery = input.value.trim();
+    updateQuickReplies();
   });
 
-  document.getElementById("clear-btn").addEventListener("click", () => {
-    document.getElementById("search-input").value = "";
-    searchQuery = "";
-    renderFaqs();
+  // 送信ボタン or Enterでも検索
+  sendBtn.addEventListener("click", () => {
+    searchQuery = input.value.trim();
+    updateQuickReplies();
+  });
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      searchQuery = input.value.trim();
+      updateQuickReplies();
+    }
   });
 });
 
+// ===== JSONデータ読み込み =====
 async function loadFaqData() {
   try {
     const res = await fetch("./faq.json");
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) throw new Error();
     const data = await res.json();
     allFaqs = data.faqs || [];
 
-    const el = document.getElementById("last-updated");
-    if (el && data.updated_at) el.textContent = data.updated_at + " 更新";
+    // 最初の挨拶を表示
+    addBotMessage(
+      "こんにちは！総務BOTです。<br>" +
+      "知りたい内容をお選びください。<br>" +
+      "もしくは質問を入力してください。"
+    );
 
-    buildCategoryFilter();
-    renderFaqs();
-  } catch (err) {
-    document.getElementById("faq-list").innerHTML =
-      '<p class="no-result">データを読み込めませんでした。<br>しばらく待ってから再度お試しください。</p>';
+    // クイックリプライパネルを追加
+    appendQuickReplies();
+
+    scrollBottom();
+  } catch {
+    addBotMessage("データの読み込みに失敗しました。<br>しばらく経ってから再試行してください。");
   }
 }
 
-function buildCategoryFilter() {
-  const categories = ["すべて", ...new Set(allFaqs.map(f => f.category))];
-  const container = document.getElementById("category-filters");
-  container.innerHTML = "";
-
-  categories.forEach(cat => {
-    const btn = document.createElement("button");
-    btn.className = "category-btn" + (cat === activeCategory ? " active" : "");
-
-    const label = document.createTextNode(cat);
-    btn.appendChild(label);
-
-    if (cat !== "すべて") {
-      const count = allFaqs.filter(f => f.category === cat).length;
-      const badge = document.createElement("span");
-      badge.className = "badge";
-      badge.textContent = count;
-      btn.appendChild(badge);
-    }
-
-    btn.addEventListener("click", () => {
-      activeCategory = cat;
-      document.querySelectorAll(".category-btn").forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-      renderFaqs();
-    });
-
-    container.appendChild(btn);
-  });
+// ===== チャット履歴にBotメッセージを追加して描画 =====
+function addBotMessage(html) {
+  chatHistory.push({ role: "bot", content: html });
+  renderChatHistory();
 }
 
-function renderFaqs() {
+// ===== チャット履歴にユーザーメッセージを追加して描画 =====
+function addUserMessage(text) {
+  chatHistory.push({ role: "user", content: escHtml(text) });
+  renderChatHistory();
+}
+
+// ===== チャット履歴全体を描画 =====
+function renderChatHistory() {
+  const body = document.getElementById("chat-body");
+  // クイックリプライパネルを一時退避
+  const qrPanelEl = body.querySelector(".qr-panel");
+
+  body.innerHTML = chatHistory.map(msg =>
+    msg.role === "bot" ? buildBotBubble(msg.content) : buildUserBubble(msg.content)
+  ).join("");
+
+  // 退避していたパネルを末尾に戻す
+  if (qrPanelEl) {
+    body.appendChild(qrPanelEl);
+  }
+}
+
+// ===== Botバブル HTML =====
+function buildBotBubble(html) {
+  return `
+    <div class="bot-row">
+      <div class="bot-avatar">${botAvatarSvg()}</div>
+      <div class="bot-bubble">${html}</div>
+    </div>`;
+}
+
+// ===== ユーザーバブル HTML =====
+function buildUserBubble(html) {
+  return `<div class="user-row"><div class="user-bubble">${html}</div></div>`;
+}
+
+// ===== クイックリプライパネルを body 末尾に追加 =====
+function appendQuickReplies() {
+  const body = document.getElementById("chat-body");
+  const panel = document.createElement("div");
+  panel.className = "qr-panel";
+  panel.id = "qr-panel";
+  body.appendChild(panel);
+  renderQuickReplies(panel);
+}
+
+// ===== クイックリプライを更新（フィルタ適用） =====
+function updateQuickReplies() {
+  const panel = document.getElementById("qr-panel");
+  if (panel) renderQuickReplies(panel);
+}
+
+function renderQuickReplies(panel) {
+  if (!panel) return;
+  const categories = ["すべて", ...new Set(allFaqs.map(f => f.category))];
   const query = searchQuery.toLowerCase();
 
   const filtered = allFaqs.filter(faq => {
     const matchCat = activeCategory === "すべて" || faq.category === activeCategory;
-    const plain = faq.answer.replace(/<br\s*\/?>/gi, " ");
-    const matchQ =
+    const plain    = faq.answer.replace(/<br\s*\/?>/gi, " ");
+    const matchQ   =
       query === "" ||
       faq.question.toLowerCase().includes(query) ||
       plain.toLowerCase().includes(query) ||
@@ -82,90 +132,90 @@ function renderFaqs() {
     return matchCat && matchQ;
   });
 
-  const countEl = document.getElementById("result-count");
-  if (countEl) {
-    if (query || activeCategory !== "すべて") {
-      countEl.textContent = `「${query || activeCategory}」の検索結果：${filtered.length} 件`;
-    } else {
-      countEl.textContent = `全 ${allFaqs.length} 件のFAQがあります`;
-    }
-  }
+  // カテゴリタブ
+  const tabs = categories.map(cat => `
+    <button class="qr-tab${cat === activeCategory ? " active" : ""}"
+            data-cat="${escHtml(cat)}">${escHtml(cat)}</button>
+  `).join("");
 
-  const list = document.getElementById("faq-list");
-  if (filtered.length === 0) {
-    list.innerHTML = '<p class="no-result">該当するFAQが見つかりませんでした。<br>別のキーワードでお試しください。</p>';
-    return;
-  }
+  // ボタン一覧
+  const buttons = filtered.length
+    ? filtered.map(faq => `
+        <button class="qr-btn" data-id="${faq.id}">
+          ${highlight(faq.question, query)}
+        </button>`).join("")
+    : `<p class="qr-empty">該当するFAQが見つかりませんでした</p>`;
 
-  list.innerHTML = filtered.map(faq => buildFaqCard(faq, query)).join("");
+  panel.innerHTML = `
+    <div class="qr-tabs">${tabs}</div>
+    <div class="qr-container">${buttons}</div>`;
 
-  list.querySelectorAll(".faq-question").forEach(el => {
-    el.addEventListener("click", () => toggleAccordion(el));
-    el.addEventListener("keydown", e => {
-      if (e.key === "Enter" || e.key === " ") toggleAccordion(el);
+  // カテゴリタブのクリック
+  panel.querySelectorAll(".qr-tab").forEach(btn => {
+    btn.addEventListener("click", () => {
+      activeCategory = btn.dataset.cat;
+      renderQuickReplies(panel);
+    });
+  });
+
+  // 質問ボタンのクリック
+  panel.querySelectorAll(".qr-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const faq = allFaqs.find(f => f.id === Number(btn.dataset.id));
+      if (!faq) return;
+
+      // ユーザーメッセージ（質問）を追加
+      addUserMessage(faq.question);
+
+      // Botの回答を追加
+      addBotMessage(faq.answer);
+
+      // 検索クリア
+      document.getElementById("search-input").value = "";
+      searchQuery = "";
+      activeCategory = "すべて";
+
+      scrollBottom();
     });
   });
 }
 
-function buildFaqCard(faq, query) {
-  const highlightedQ = highlight(faq.question, query);
-  const highlightedA = highlightAnswer(faq.answer, query);
-
-  return `
-    <div class="faq-card" data-id="${faq.id}">
-      <div class="faq-question" role="button" tabindex="0" aria-expanded="false">
-        <div class="q-bubble">
-          <span class="category-tag">${escapeHtml(faq.category)}</span>
-          <span class="q-text">Q. ${highlightedQ}</span>
-          <span class="accordion-icon">▼</span>
-        </div>
-      </div>
-      <div class="faq-answer" aria-hidden="true">
-        <div class="answer-row">
-          <div class="bubble-avatar">
-            <svg viewBox="0 0 28 28" fill="none">
-              <rect width="28" height="28" rx="14" fill="#1a4fa0"/>
-              <rect x="7.5" y="9.5" width="13" height="9.5" rx="2.5" fill="white"/>
-              <rect x="10.5" y="12.5" width="2" height="2" rx="1" fill="#1a4fa0"/>
-              <rect x="15.5" y="12.5" width="2" height="2" rx="1" fill="#1a4fa0"/>
-              <rect x="12" y="15.5" width="4" height="1" rx="0.5" fill="#1a4fa0"/>
-              <rect x="12" y="6.5" width="4" height="3" rx="1" fill="white"/>
-              <circle cx="14" cy="6" r="1" fill="#7eb3ff"/>
-            </svg>
-          </div>
-          <div class="a-bubble">${highlightedA}</div>
-        </div>
-      </div>
-    </div>`;
+// ===== 末尾にスクロール =====
+function scrollBottom() {
+  const body = document.getElementById("chat-body");
+  if (body) body.scrollTop = body.scrollHeight;
 }
 
-function toggleAccordion(questionEl) {
-  const card = questionEl.closest(".faq-card");
-  const isOpen = card.classList.contains("open");
-  if (isOpen) {
-    card.classList.remove("open");
-    questionEl.setAttribute("aria-expanded", "false");
-    card.querySelector(".faq-answer").setAttribute("aria-hidden", "true");
-  } else {
-    card.classList.add("open");
-    questionEl.setAttribute("aria-expanded", "true");
-    card.querySelector(".faq-answer").setAttribute("aria-hidden", "false");
-  }
+// ===== Bot アバター SVG =====
+function botAvatarSvg() {
+  return `<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="24" cy="24" r="23" fill="white" stroke="#ddd" stroke-width="1.5"/>
+    <rect x="12" y="17" width="24" height="17" rx="5" fill="#2563c8"/>
+    <circle cx="19" cy="25" r="3" fill="white"/>
+    <circle cx="29" cy="25" r="3" fill="white"/>
+    <circle cx="19" cy="25" r="1.5" fill="#2563c8"/>
+    <circle cx="29" cy="25" r="1.5" fill="#2563c8"/>
+    <rect x="20" y="30" width="8" height="1.8" rx=".9" fill="white"/>
+    <rect x="21" y="12" width="6" height="5" rx="1.5" fill="#2563c8"/>
+    <circle cx="24" cy="11" r="2" fill="#2563c8"/>
+    <circle cx="24" cy="10" r="1.2" fill="#7eb3ff"/>
+    <rect x="10" y="20" width="3" height="8" rx="1.5" fill="#2563c8"/>
+    <rect x="35" y="20" width="3" height="8" rx="1.5" fill="#2563c8"/>
+  </svg>`;
 }
 
+// ===== キーワードハイライト =====
 function highlight(text, query) {
-  if (!query) return escapeHtml(text);
-  const escaped = escapeHtml(text);
+  if (!query) return escHtml(text);
   const safe = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return escaped.replace(new RegExp(`(${escapeHtml(safe)})`, "gi"), "<mark>$1</mark>");
+  return escHtml(text).replace(new RegExp(`(${escHtml(safe)})`, "gi"), "<mark>$1</mark>");
 }
 
-function highlightAnswer(html, query) {
-  if (!query) return html;
-  const safe = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return html.replace(new RegExp(`(?![^<]*>)(${safe})`, "gi"), "<mark>$1</mark>");
-}
-
-function escapeHtml(t) {
-  return t.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+// ===== HTML エスケープ =====
+function escHtml(t) {
+  return String(t)
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;");
 }

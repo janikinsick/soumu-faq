@@ -1,386 +1,276 @@
 /* =============================================
-   総務BOT - チャットスタイルFAQ
+   総務部 お問い合わせチャットボット
    ============================================= */
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bot-blue:      #1a4fa0;
-  --bot-blue-lt:   #2563c8;
-  --bubble-bot:    #ffffff;
-  --bubble-q:      #e8f0fe;
-  --bubble-q-text: #1a3a72;
-  --bg:            #f0f2f5;
-  --text:          #1c1e21;
-  --muted:         #65676b;
-  --border:        #dde3ee;
-  --tag-bg:        #dbeafe;
-  --tag-text:      #1e40af;
-  --highlight:     #fef08a;
-  --radius-lg:     18px;
-  --radius-sm:     8px;
-  --shadow:        0 1px 4px rgba(0,0,0,.12);
-  --transition:    .2s ease;
+  --blue:       #2563c8;
+  --blue-dark:  #1a4fa0;
+  --blue-lt:    #e8f0fe;
+  --bg:         #ffffff;
+  --gray-bg:    #f0f0f0;
+  --btn-bg:     #ffffff;
+  --text:       #333333;
+  --muted:      #888888;
+  --border:     #e0e0e0;
+  --bubble-r:   18px;
+  --avatar-sz:  48px;
+  --shadow:     0 1px 4px rgba(0,0,0,.1);
 }
 
-body {
+html, body {
+  height: 100%;
+  background: #e8edf3;
   font-family: "Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic",Meiryo,sans-serif;
-  background: var(--bg);
   color: var(--text);
-  line-height: 1.65;
-  font-size: 14px;
-  min-height: 100dvh;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 0;
+  font-size: 15px;
+  line-height: 1.6;
 }
 
-/* ===== チャットアプリ外枠 ===== */
+/* ===== アプリ枠 ===== */
 .chat-app {
   width: 100%;
-  max-width: 720px;
-  min-height: 100dvh;
+  max-width: 480px;
+  height: 100dvh;
+  height: 100vh;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   background: var(--bg);
+  box-shadow: 0 0 30px rgba(0,0,0,.18);
   position: relative;
 }
 
 /* ===== ヘッダー ===== */
 .chat-header {
-  background: var(--bot-blue);
+  background: var(--blue);
   color: #fff;
-  padding: 14px 18px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  box-shadow: 0 2px 8px rgba(0,0,0,.18);
-}
-
-.bot-profile { display: flex; align-items: center; gap: 12px; }
-
-.bot-avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  overflow: hidden;
-  flex-shrink: 0;
-  border: 2px solid rgba(255,255,255,.3);
-}
-.bot-avatar svg { width: 100%; height: 100%; }
-
-.bot-name { font-size: 1rem; font-weight: 700; letter-spacing: .02em; }
-
-.bot-status {
-  font-size: .78rem;
-  opacity: .85;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  margin-top: 1px;
-}
-
-.status-dot {
-  width: 7px;
-  height: 7px;
-  background: #4ade80;
-  border-radius: 50%;
-  animation: pulse 2s infinite;
-}
-@keyframes pulse {
-  0%,100% { opacity: 1; }
-  50%      { opacity: .4; }
-}
-
-.header-updated { font-size: .72rem; opacity: .7; white-space: nowrap; }
-
-/* ===== 検索エリア ===== */
-.search-area {
-  background: #fff;
-  padding: 12px 14px 10px;
-  border-bottom: 1px solid var(--border);
-  position: sticky;
-  top: 72px;
-  z-index: 90;
-  box-shadow: 0 2px 6px rgba(0,0,0,.06);
-}
-
-.search-input-wrap {
-  display: flex;
-  align-items: center;
-  background: var(--bg);
-  border: 1.5px solid var(--border);
-  border-radius: 22px;
-  padding: 7px 12px;
-  gap: 8px;
-  transition: border-color var(--transition);
-}
-.search-input-wrap:focus-within { border-color: var(--bot-blue-lt); }
-
-.search-icon { width: 16px; height: 16px; flex-shrink: 0; }
-
-#search-input {
-  flex: 1;
-  border: none;
-  background: transparent;
-  font-size: .95rem;
-  font-family: inherit;
-  color: var(--text);
-  outline: none;
-}
-#search-input::placeholder { color: #b0b8c8; }
-
-#clear-btn {
-  border: none;
-  background: none;
-  color: var(--muted);
-  font-size: .85rem;
-  cursor: pointer;
-  padding: 2px 4px;
-  border-radius: 50%;
-  line-height: 1;
-  transition: background var(--transition);
-}
-#clear-btn:hover { background: var(--border); }
-
-.filter-row {
-  margin-top: 9px;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-.filter-row::-webkit-scrollbar { display: none; }
-
-#category-filters {
-  display: flex;
-  gap: 7px;
-  width: max-content;
-  padding-bottom: 2px;
-}
-
-.category-btn {
-  background: var(--bg);
-  border: 1.5px solid var(--border);
-  border-radius: 16px;
-  padding: 4px 12px;
-  font-size: .8rem;
-  font-family: inherit;
-  color: var(--muted);
-  cursor: pointer;
-  white-space: nowrap;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  transition: all var(--transition);
-}
-.category-btn:hover { border-color: var(--bot-blue-lt); color: var(--bot-blue-lt); }
-.category-btn.active {
-  background: var(--bot-blue);
-  border-color: var(--bot-blue);
-  color: #fff;
-}
-
-.badge {
-  font-size: .7rem;
+  padding: 15px 18px;
+  font-size: .97rem;
   font-weight: 700;
-  background: rgba(255,255,255,.25);
-  padding: 0 5px;
-  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  letter-spacing: .02em;
 }
-.category-btn:not(.active) .badge {
-  background: var(--tag-bg);
-  color: var(--tag-text);
-}
+.header-icon { display: flex; align-items: center; opacity: .9; }
 
 /* ===== チャット本文 ===== */
 .chat-body {
   flex: 1;
-  padding: 18px 14px 12px;
+  overflow-y: auto;
+  padding: 20px 14px 12px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 18px;
+  scroll-behavior: smooth;
 }
 
-/* ===== チャット行（Bot/User） ===== */
-.chat-row {
+/* ===== Bot行（アバター＋バブル） ===== */
+.bot-row {
   display: flex;
-  gap: 8px;
-  align-items: flex-end;
-  margin-bottom: 4px;
+  align-items: flex-start;
+  gap: 10px;
 }
 
-.bot-row { flex-direction: row; }
-
-.bubble-avatar {
-  width: 28px;
-  height: 28px;
-  flex-shrink: 0;
+/* アバター */
+.bot-avatar {
+  width: var(--avatar-sz);
+  height: var(--avatar-sz);
   border-radius: 50%;
-  overflow: hidden;
-  margin-bottom: 2px;
-}
-.bubble-avatar svg { width: 100%; height: 100%; }
-
-/* ===== 吹き出し ===== */
-.bubble {
-  max-width: 82%;
-  padding: 10px 14px;
-  border-radius: var(--radius-lg);
-  line-height: 1.7;
+  border: 1.5px solid var(--border);
+  background: #fff;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   box-shadow: var(--shadow);
 }
+.bot-avatar svg { width: 60%; height: 60%; }
 
-/* Botの吹き出し（左） */
+/* Botバブル（三角テール付き） */
 .bot-bubble {
-  background: var(--bubble-bot);
-  color: var(--text);
-  border-bottom-left-radius: 4px;
-}
-
-.greeting {
-  font-size: .92rem;
-  color: var(--muted);
-}
-
-/* 件数バー */
-.result-bar {
-  text-align: center;
-  font-size: .78rem;
-  color: var(--muted);
-  padding: 6px 0 2px;
-}
-
-/* ===== FAQカード ===== */
-.faq-card { margin-bottom: 10px; }
-
-/* Q行（クリックで開閉） */
-.faq-question {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  user-select: none;
-  justify-content: flex-start;
-}
-
-.q-bubble {
-  background: var(--bubble-q);
-  color: var(--bubble-q-text);
-  border-radius: var(--radius-lg);
-  border-bottom-left-radius: 4px;
-  padding: 10px 14px;
-  font-weight: 600;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 4px var(--bubble-r) var(--bubble-r) var(--bubble-r);
+  padding: 12px 16px;
+  max-width: 78%;
   font-size: .93rem;
   box-shadow: var(--shadow);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  max-width: calc(100% - 80px);
-  transition: background var(--transition), transform var(--transition);
-}
-.faq-question:hover .q-bubble { background: #d1e3ff; transform: translateY(-1px); }
-.faq-card.open .q-bubble { background: var(--bot-blue); color: #fff; }
-.faq-card.open .q-bubble .category-tag { background: rgba(255,255,255,.2); color: #fff; }
-
-.category-tag {
-  flex-shrink: 0;
-  background: var(--tag-bg);
-  color: var(--tag-text);
-  font-size: .72rem;
-  font-weight: 700;
-  padding: 2px 7px;
-  border-radius: 4px;
-  white-space: nowrap;
-}
-
-.q-text { flex: 1; }
-
-.accordion-icon {
-  flex-shrink: 0;
-  font-size: .7rem;
-  opacity: .6;
-  margin-left: auto;
-  transition: transform var(--transition);
-}
-.faq-card.open .accordion-icon { transform: rotate(180deg); opacity: 1; }
-
-/* A行（Bot吹き出し） */
-.faq-answer {
-  overflow: hidden;
-  max-height: 0;
-  transition: max-height .35s ease;
-}
-.faq-card.open .faq-answer { max-height: 800px; }
-
-.answer-row {
-  display: flex;
-  gap: 8px;
-  align-items: flex-end;
-  padding-top: 8px;
-  padding-left: 4px;
-}
-
-.a-bubble {
-  background: var(--bubble-bot);
-  color: var(--text);
-  border-radius: var(--radius-lg);
-  border-bottom-left-radius: 4px;
-  padding: 11px 15px;
-  box-shadow: var(--shadow);
-  font-size: .93rem;
   line-height: 1.75;
-  max-width: calc(100% - 44px);
+  position: relative;
+}
+/* 三角テール */
+.bot-bubble::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: 14px;
+  border: 7px solid transparent;
+  border-right-color: var(--border);
+  border-left: none;
+}
+.bot-bubble::after {
+  content: "";
+  position: absolute;
+  left: -6px;
+  top: 15px;
+  border: 6px solid transparent;
+  border-right-color: #fff;
+  border-left: none;
 }
 
-/* 検索ハイライト */
+/* ===== ユーザーバブル（右） ===== */
+.user-row {
+  display: flex;
+  justify-content: flex-end;
+}
+.user-bubble {
+  background: var(--blue);
+  color: #fff;
+  border-radius: var(--bubble-r) 4px var(--bubble-r) var(--bubble-r);
+  padding: 10px 16px;
+  max-width: 78%;
+  font-size: .93rem;
+  box-shadow: var(--shadow);
+  line-height: 1.6;
+  position: relative;
+}
+.user-bubble::after {
+  content: "";
+  position: absolute;
+  right: -6px;
+  top: 13px;
+  border: 6px solid transparent;
+  border-left-color: var(--blue);
+  border-right: none;
+}
+
+/* ===== クイックリプライパネル ===== */
+.qr-panel {
+  margin-left: calc(var(--avatar-sz) + 10px);
+}
+
+/* カテゴリタブ */
+.qr-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.qr-tab {
+  background: var(--btn-bg);
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  padding: 3px 11px;
+  font-size: .78rem;
+  font-family: inherit;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all .15s;
+}
+.qr-tab:hover { border-color: var(--blue); color: var(--blue); }
+.qr-tab.active {
+  background: var(--blue);
+  border-color: var(--blue);
+  color: #fff;
+}
+
+/* ボタン一覧コンテナ */
+.qr-container {
+  background: var(--gray-bg);
+  border-radius: 16px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+/* 各クイックリプライボタン */
+.qr-btn {
+  background: var(--btn-bg);
+  border: none;
+  border-radius: 24px;
+  padding: 12px 18px;
+  text-align: left;
+  font-size: .9rem;
+  font-family: inherit;
+  color: var(--text);
+  cursor: pointer;
+  width: 100%;
+  transition: background .15s, color .15s;
+  line-height: 1.4;
+}
+.qr-btn:hover  { background: var(--blue-lt); color: var(--blue); }
+.qr-btn:active { background: var(--blue); color: #fff; }
+
+/* 0件 */
+.qr-empty {
+  text-align: center;
+  color: var(--muted);
+  font-size: .88rem;
+  padding: 14px 10px;
+}
+
+/* ===== 入力バー ===== */
+.input-bar {
+  flex-shrink: 0;
+  background: #fff;
+  border-top: 1px solid var(--border);
+  padding: 10px 14px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+#search-input {
+  flex: 1;
+  border: 1.5px solid var(--border);
+  border-radius: 24px;
+  padding: 10px 18px;
+  font-size: .92rem;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--gray-bg);
+  outline: none;
+  transition: border-color .15s;
+}
+#search-input:focus { border-color: var(--blue); background: #fff; }
+#search-input::placeholder { color: #bbb; }
+
+.send-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--blue);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background .15s;
+}
+.send-btn:hover  { background: var(--blue-dark); }
+.send-btn:active { transform: scale(.95); }
+
+/* ===== 検索ハイライト ===== */
 mark {
-  background: var(--highlight);
+  background: #fef08a;
   color: inherit;
   border-radius: 2px;
   padding: 0 1px;
 }
 
-/* 空・エラー */
-.no-result {
-  text-align: center;
-  color: var(--muted);
-  padding: 40px 16px;
-  background: #fff;
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow);
-  line-height: 2;
-  font-size: .9rem;
-}
-
-/* ===== フッター ===== */
-.chat-footer {
-  background: #fff;
-  border-top: 1px solid var(--border);
-  text-align: center;
-  padding: 12px 16px;
-  font-size: .8rem;
-  color: var(--muted);
-}
-
-/* ===== レスポンシブ ===== */
-@media (min-width: 720px) {
-  body { padding: 24px 16px; align-items: flex-start; }
+/* ===== PC表示 ===== */
+@media (min-width: 520px) {
+  body { display: flex; justify-content: center; align-items: center; min-height: 100vh; }
   .chat-app {
-    border-radius: 12px;
+    height: 92vh;
+    max-height: 820px;
+    border-radius: 14px;
     overflow: hidden;
-    box-shadow: 0 4px 24px rgba(0,0,0,.14);
-    min-height: auto;
   }
-  .chat-header { position: relative; top: auto; }
-  .search-area { position: relative; top: auto; }
-}
-
-@media (max-width: 480px) {
-  .q-bubble { max-width: calc(100% - 40px); font-size: .88rem; }
-  .a-bubble { font-size: .88rem; }
-  .bubble-avatar { width: 24px; height: 24px; }
 }
