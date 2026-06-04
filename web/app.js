@@ -136,7 +136,7 @@ function renderQuickReplies(panel) {
   const buttons = filtered.length
     ? filtered.map(faq => `
         <button class="qr-btn" data-id="${faq.id}">
-          ${highlight(faq.question, query)}
+          ${highlight(faq.question, searchQuery)}
         </button>`).join("")
     : `<p class="qr-empty">該当するFAQが見つかりませんでした</p>`;
 
