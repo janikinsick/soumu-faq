@@ -119,16 +119,10 @@ function updateQuickReplies() {
 function renderQuickReplies(panel) {
   if (!panel) return;
   const categories = ["すべて", ...new Set(allFaqs.map(f => f.category))];
-  const query = searchQuery.toLowerCase();
 
   const filtered = allFaqs.filter(faq => {
     const matchCat = activeCategory === "すべて" || faq.category === activeCategory;
-    const plain    = faq.answer.replace(/<br\s*\/?>/gi, " ");
-    const matchQ   =
-      query === "" ||
-      faq.question.toLowerCase().includes(query) ||
-      plain.toLowerCase().includes(query) ||
-      faq.category.toLowerCase().includes(query);
+    const matchQ   = searchQuery === "" || matchQuery(faq, searchQuery);
     return matchCat && matchQ;
   });
 
@@ -204,11 +198,17 @@ function botAvatarSvg() {
   </svg>`;
 }
 
-// ===== キーワードハイライト =====
+// ===== キーワードハイライト（トークン単位）=====
 function highlight(text, query) {
   if (!query) return escHtml(text);
-  const safe = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return escHtml(text).replace(new RegExp(`(${escHtml(safe)})`, "gi"), "<mark>$1</mark>");
+  let result = escHtml(text);
+  // スペース区切りで各トークンをハイライト
+  const tokens = normalizeText(query).split(/[\s　]+/).filter(Boolean);
+  tokens.forEach(token => {
+    const safe = escHtml(token).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    result = result.replace(new RegExp(`(${safe})`, "gi"), "<mark>$1</mark>");
+  });
+  return result;
 }
 
 // ===== HTML エスケープ =====
@@ -218,4 +218,61 @@ function escHtml(t) {
     .replace(/</g,"&lt;")
     .replace(/>/g,"&gt;")
     .replace(/"/g,"&quot;");
+}
+
+// =============================================
+// あいまい検索ロジック
+// =============================================
+
+/**
+ * FAQがクエリにマッチするか判定（3段階）
+ * 1. スペース区切りでトークンに分割してAND検索
+ * 2. 各トークンを部分一致（substring）で検索
+ * 3. 部分一致しなければ部分シーケンス（fuzzy）で検索
+ */
+function matchQuery(faq, query) {
+  const plain  = faq.answer.replace(/<br\s*\/?>/gi, " ");
+  const target = normalizeText(`${faq.category} ${faq.question} ${plain}`);
+  const tokens = normalizeText(query).split(/[\s　]+/).filter(Boolean);
+
+  return tokens.every(token => {
+    // ① 通常の部分一致
+    if (target.includes(token)) return true;
+    // ② 短すぎるトークンはあいまい検索しない（誤ヒット防止）
+    if (token.length < 2) return false;
+    // ③ 部分シーケンス（あいまい）一致
+    return isSubsequence(token, target);
+  });
+}
+
+/**
+ * テキストを検索用に正規化する
+ * ・大文字→小文字
+ * ・カタカナ→ひらがな（「コウツウヒ」→「こうつうひ」）
+ * ・全角英数→半角
+ */
+function normalizeText(text) {
+  return String(text)
+    .toLowerCase()
+    // カタカナ → ひらがな
+    .replace(/[ァ-ヶ]/g, c =>
+      String.fromCharCode(c.charCodeAt(0) - 0x60)
+    )
+    // 全角英数 → 半角
+    .replace(/[Ａ-Ｚａ-ｚ０-９]/g, c =>
+      String.fromCharCode(c.charCodeAt(0) - 0xFEE0)
+    );
+}
+
+/**
+ * 部分シーケンス一致（あいまい検索）
+ * patternの全文字がtextに順番通りに含まれるか確認する
+ * 例: "有申" が "有給申請方法" にマッチ → true
+ */
+function isSubsequence(pattern, text) {
+  let pi = 0;
+  for (let ti = 0; ti < text.length && pi < pattern.length; ti++) {
+    if (text[ti] === pattern[pi]) pi++;
+  }
+  return pi === pattern.length;
 }
