@@ -27,7 +27,7 @@ const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTd8oiOsm
 //
 //   空文字のままにすると送信ボタンは表示されません
 // ============================================================
-const GAS_WEBHOOK_URL = "";
+const GAS_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbynkAsf2na4fjh1rvfDrdLzuGm4cysYGrjVr-UPPK_34FttmOZA93Rop6ZafpXcTZngKw/exec";
 
 // ===== 状態 =====
 let allFaqs        = [];
