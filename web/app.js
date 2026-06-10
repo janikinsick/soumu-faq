@@ -16,6 +16,19 @@
 // ============================================================
 const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTd8oiOsmJ6-MWc4gTIJH0NrPCP7oYZ2_JZ3KP-Jy-e015BKWNyVvimdVaBbjGxBKxcLsrGgYmdoGcr/pub?gid=0&single=true&output=csv";
 
+// ============================================================
+// ★ 設定：未回答質問をスプレッドシートに送るGAS WebアプリのURL
+//
+//   設定方法：
+//   1. Apps Script で doPost() を追加（手順は別途案内）
+//   2. 「デプロイ」→「新しいデプロイ」→「ウェブアプリ」
+//   3. アクセスできるユーザー:「全員」に設定してデプロイ
+//   4. 表示されたURLをコピーして下の "" に貼り付ける
+//
+//   空文字のままにすると送信ボタンは表示されません
+// ============================================================
+const GAS_WEBHOOK_URL = "";
+
 // ===== 状態 =====
 let allFaqs        = [];
 let activeCategory = "すべて";
@@ -225,12 +238,16 @@ function renderQuickReplies(panel) {
   `).join("");
 
   // ボタン一覧
+  const sendBtn = (GAS_WEBHOOK_URL && searchQuery)
+    ? `<button class="qr-send-btn" id="qr-send-btn">この質問を総務部に送る</button>`
+    : "";
+
   const buttons = filtered.length
     ? filtered.map(faq => `
         <button class="qr-btn" data-id="${faq.id}">
           ${highlight(faq.question, searchQuery)}
         </button>`).join("")
-    : `<p class="qr-empty">該当するFAQが見つかりませんでした</p>`;
+    : `<p class="qr-empty">該当するFAQが見つかりませんでした</p>${sendBtn}`;
 
   panel.innerHTML = `
     <div class="qr-tabs">${tabs}</div>
@@ -243,6 +260,12 @@ function renderQuickReplies(panel) {
       renderQuickReplies(panel);
     });
   });
+
+  // 「総務部に送る」ボタンのクリック
+  const sendToGasBtn = panel.querySelector("#qr-send-btn");
+  if (sendToGasBtn) {
+    sendToGasBtn.addEventListener("click", () => sendToSheet(searchQuery));
+  }
 
   // 質問ボタンのクリック
   panel.querySelectorAll(".qr-btn").forEach(btn => {
@@ -264,6 +287,32 @@ function renderQuickReplies(panel) {
       scrollBottom();
     });
   });
+}
+
+// ===== 未回答質問をスプレッドシートに送信 =====
+async function sendToSheet(question) {
+  if (!GAS_WEBHOOK_URL || !question) return;
+
+  addUserMessage(question);
+  addBotMessage(
+    "ご質問を総務部に送りました。<br>" +
+    "担当者が確認次第、回答いたします。<br>" +
+    "お急ぎの場合は総務部に直接ご連絡ください。"
+  );
+
+  // fire-and-forget（no-corsのため応答は読めないが送信は届く）
+  fetch(GAS_WEBHOOK_URL, {
+    method: "POST",
+    mode:   "no-cors",
+    headers: { "Content-Type": "application/json" },
+    body:    JSON.stringify({ question }),
+  }).catch(() => {});
+
+  document.getElementById("search-input").value = "";
+  searchQuery    = "";
+  activeCategory = "すべて";
+  updateQuickReplies();
+  scrollBottom();
 }
 
 // ===== 末尾にスクロール =====
