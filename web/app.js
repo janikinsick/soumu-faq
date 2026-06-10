@@ -1,5 +1,21 @@
 "use strict";
 
+// ============================================================
+// ★ 設定：Googleスプレッドシートを使う場合はURLをここに貼る
+//
+//   設定方法：
+//   1. Googleスプレッドシートを開く
+//   2. メニュー「ファイル」→「共有」→「Webに公開」
+//   3. 「シート1」「カンマ区切り形式（CSV）」を選んで「公開」
+//   4. 表示されたURLをコピーして下の "" に貼り付ける
+//   5. このファイルを保存してGitHubにプッシュする
+//
+//   例: const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/xxx/pub?output=csv";
+//
+//   空文字のままにすると、faq.json を使用します（Excel運用）
+// ============================================================
+const SHEET_CSV_URL = "";
+
 // ===== 状態 =====
 let allFaqs        = [];
 let activeCategory = "すべて";
@@ -34,28 +50,104 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
-// ===== JSONデータ読み込み =====
+// ===== データ読み込み（GoogleスプレッドシートまたはJSON） =====
 async function loadFaqData() {
   try {
-    const res = await fetch("./faq.json");
-    if (!res.ok) throw new Error();
-    const data = await res.json();
-    allFaqs = data.faqs || [];
+    if (SHEET_CSV_URL) {
+      // ---- Googleスプレッドシート（CSV）から読み込む ----
+      const res = await fetch(SHEET_CSV_URL);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const csvText = await res.text();
+      allFaqs = parseCsv(csvText);
+    } else {
+      // ---- ローカルの faq.json から読み込む（Excel運用）----
+      const res = await fetch("./faq.json");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      allFaqs = data.faqs || [];
+    }
 
-    // 最初の挨拶を表示
     addBotMessage(
       "こんにちは！総務BOTです。<br>" +
       "知りたい内容をお選びください。<br>" +
       "もしくは質問を入力してください。"
     );
-
-    // クイックリプライパネルを追加
     appendQuickReplies();
-
     scrollBottom();
-  } catch {
+
+  } catch (err) {
+    console.error("FAQ読み込みエラー:", err);
     addBotMessage("データの読み込みに失敗しました。<br>しばらく経ってから再試行してください。");
   }
+}
+
+// ===== CSV パーサー =====
+// Googleスプレッドシートの CSV を FAQリストに変換する
+// 1行目はヘッダー（カテゴリ,質問,回答）としてスキップ
+function parseCsv(csvText) {
+  const lines = csvText.replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim().split("\n");
+  const result = [];
+
+  for (let i = 1; i < lines.length; i++) {   // 0行目はヘッダーなのでスキップ
+    const cols = parseCsvLine(lines[i]);
+    const category = (cols[0] || "").trim();
+    const question  = (cols[1] || "").trim();
+    const answer    = (cols[2] || "").trim();
+
+    if (!question || !answer) continue;       // 空行はスキップ
+
+    result.push({
+      id:       result.length + 1,
+      category: category || "その他",
+      question: question,
+      answer:   sanitizeAnswer(answer),       // <br>タグを安全に処理
+    });
+  }
+  return result;
+}
+
+// CSV の1行をフィールド配列に分解する（ダブルクォート・改行対応）
+function parseCsvLine(line) {
+  const fields = [];
+  let field = "";
+  let inQuote = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuote) {
+      if (ch === '"' && line[i + 1] === '"') {
+        field += '"'; i++;                    // "" → " (エスケープ)
+      } else if (ch === '"') {
+        inQuote = false;                      // 閉じクォート
+      } else {
+        field += ch;
+      }
+    } else {
+      if (ch === '"') {
+        inQuote = true;                       // 開きクォート
+      } else if (ch === ",") {
+        fields.push(field); field = "";       // フィールド区切り
+      } else {
+        field += ch;
+      }
+    }
+  }
+  fields.push(field);
+  return fields;
+}
+
+// 回答テキストのサニタイズ
+// ・HTMLを無害化しつつ <br> タグだけ改行として残す
+// ・セル内改行（\n）も <br> に変換
+function sanitizeAnswer(text) {
+  const escaped = text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+  return escaped
+    .replace(/&lt;br&gt;/gi, "<br>")         // <br> を改行に復元
+    .replace(/\n/g, "<br>");                  // セル内改行も <br> に
 }
 
 // ===== チャット履歴にBotメッセージを追加して描画 =====
