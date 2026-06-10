@@ -14,7 +14,7 @@
 //
 //   空文字のままにすると、faq.json を使用します（Excel運用）
 // ============================================================
-const SHEET_CSV_URL = "";
+const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTd8oiOsmJ6-MWc4gTIJH0NrPCP7oYZ2_JZ3KP-Jy-e015BKWNyVvimdVaBbjGxBKxcLsrGgYmdoGcr/pub?gid=0&single=true&output=csv";
 
 // ===== 状態 =====
 let allFaqs        = [];
