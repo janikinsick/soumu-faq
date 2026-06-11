@@ -300,13 +300,9 @@ async function sendToSheet(question) {
     "お急ぎの場合は総務部に直接ご連絡ください。"
   );
 
-  // fire-and-forget（no-corsのため応答は読めないが送信は届く）
-  fetch(GAS_WEBHOOK_URL, {
-    method: "POST",
-    mode:   "no-cors",
-    headers: { "Content-Type": "application/json" },
-    body:    JSON.stringify({ question }),
-  }).catch(() => {});
+  // GETリクエストでクエリパラメータとして送信（no-cors対応）
+  const url = GAS_WEBHOOK_URL + "?question=" + encodeURIComponent(question);
+  fetch(url, { method: "GET", mode: "no-cors" }).catch(() => {});
 
   document.getElementById("search-input").value = "";
   searchQuery    = "";
